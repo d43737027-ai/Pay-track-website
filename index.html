@@ -1738,67 +1738,132 @@
         .join("");
     }
 
-    function renderAdvisor(totals) {
-      const topCats = Object.entries(totals.byCategory).sort((a, b) => b[1] - a[1]);
-      const top1 = topCats[0] ? `${topCats[0][0]} (${formatINR(topCats[0][1])})` : "₹0 spent yet";
-      const top2 = topCats[1] ? `${topCats[1][0]} (${formatINR(topCats[1][1])})` : "No second category yet";
 
-      const items = [
-        {
-          icon: "📌",
-          title: "Top spending category",
-          desc: `Highest spend is ${top1}. Add expenses to see real-time breakdown.`
-        },
-        {
-          icon: "🍽️",
-          title: "Secondary category check",
-          desc: `Next category: ${top2}. Track daily entries for accurate insights.`
-        },
-        {
-          icon: "🌱",
-          title: "Net retention summary",
-          desc: `Current retained balance is ${formatINR(totals.saved)} (${totals.saveRate}% of income).`
-        }
-      ];
 
-      document.getElementById("miniAdvice").innerHTML = items
-        .slice(0, 2)
-        .map(
-          (it) => `
-            <div class="advisor-item">
-              <div class="advisor-icon">${it.icon}</div>
-              <div>
-                <strong>${it.title}</strong>
-                <p>${it.desc}</p>
-              </div>
-            </div>
-          `
-        )
-        .join("");
 
-      document.getElementById("adviceCards").innerHTML = [
-        ...items,
-        {
-          icon: "🔁",
-          title: "Budget threshold status",
-          desc:
-            totals.expenseRatio >= 0.8
-              ? "Expenses are at or above 80% of income — pause non-essential buys."
-              : "Expenses are safely below the 80% budget alert threshold."
-        }
-      ]
-        .map(
-          (it) => `
-            <div class="card">
-              <div style="font-size:24px;margin-bottom:8px">${it.icon}</div>
-              <h3 style="margin:0 0 6px;font-size:14px">${it.title}</h3>
-              <p class="subtle" style="font-size:12px;margin:0">${it.desc}</p>
-            </div>
-          `
-        )
-        .join("");
+
+    
+function renderAdvisor(totals) {
+  const topCats = Object.entries(totals.byCategory)
+    .sort((a, b) => b[1] - a[1]);
+
+  const top1 = topCats[0]
+    ? `${topCats[0][0]} (${formatINR(topCats[0][1])})`
+    : "No expenses yet";
+
+  const top2 = topCats[1]
+    ? `${topCats[1][0]} (${formatINR(topCats[1][1])})`
+    : "No second category yet";
+
+  const items = [
+    {
+      icon: "📌",
+      title: "Top spending category",
+      desc: `Highest spend is ${top1}.`,
+      action: "top",
+      actionText: "View transactions →"
+    },
+    {
+      icon: "🍽️",
+      title: "Secondary category check",
+      desc: `Next category: ${top2}.`,
+      action: "second",
+      actionText: "View transactions →"
+    },
+    {
+      icon: "🌱",
+      title: "Net retention summary",
+      desc: `Current retained balance is ${formatINR(totals.saved)} (${totals.saveRate}% of income).`,
+      action: "retention",
+      actionText: "View analytics →"
+    },
+    {
+      icon: "🔁",
+      title: "Budget threshold status",
+      desc: totals.expenseRatio >= 0.8
+        ? "Expenses are at or above 80% of income."
+        : "Expenses are below the 80% budget alert threshold.",
+      action: "budget",
+      actionText: "Check analytics →"
     }
+  ];
 
+  document.getElementById("miniAdvice").innerHTML = items
+    .slice(0, 2)
+    .map(it => `
+      <div class="advisor-item">
+        <div class="advisor-icon">${it.icon}</div>
+        <div>
+          <strong>${it.title}</strong>
+          <p>${it.desc}</p>
+        </div>
+      </div>
+    `)
+    .join("");
+
+  const cardsEl = document.getElementById("adviceCards");
+
+  cardsEl.innerHTML = items.map(it => `
+    <div class="card advisor-clickable"
+         data-advisor-action="${it.action}"
+         role="button"
+         tabindex="0"
+         style="cursor:pointer">
+      <div style="font-size:24px;margin-bottom:8px">${it.icon}</div>
+      <h3 style="margin:0 0 6px;font-size:14px">${it.title}</h3>
+      <p class="subtle" style="font-size:12px;margin:0">${it.desc}</p>
+      <p style="font-size:11px;margin:12px 0 0;color:var(--accent);font-weight:700">
+        ${it.actionText}
+      </p>
+    </div>
+  `).join("");
+
+  function handleAdvisorAction(card) {
+    const action = card.dataset.advisorAction;
+    const currentCats = Object.entries(getTotals().byCategory)
+      .sort((a, b) => b[1] - a[1]);
+
+    if (action === "top") {
+      if (currentCats[0]) {
+        filterByCategory(currentCats[0][0]);
+      } else {
+        openModal("expense");
+      }
+    } else if (action === "second") {
+      if (currentCats[1]) {
+        filterByCategory(currentCats[1][0]);
+      } else {
+        openModal("expense");
+      }
+    } else if (action === "retention" || action === "budget") {
+      navigateTo("analytics");
+    }
+  }
+
+  cardsEl.onclick = (event) => {
+    const card = event.target.closest("[data-advisor-action]");
+    if (card && cardsEl.contains(card)) {
+      handleAdvisorAction(card);
+    }
+  };
+
+  cardsEl.onkeydown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      const card = event.target.closest("[data-advisor-action]");
+      if (card && cardsEl.contains(card)) {
+        event.preventDefault();
+        handleAdvisorAction(card);
+      }
+    }
+  };
+}
+
+    
+
+
+
+
+    
     function renderAnalytics(totals) {
       const expenseCount = state.transactions.filter((t) => t.type === "expense").length;
       const avgDaily = expenseCount > 0 ? Math.round(totals.expense / Math.max(1, Math.min(30, expenseCount * 3))) : 0;
