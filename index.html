@@ -1788,6 +1788,33 @@ function renderAdvisor(totals) {
     ? `${topCats[1][0]} (${formatINR(topCats[1][1])})`
     : "No second category yet";
 
+
+
+const alertEl = document.getElementById("budgetAlert");
+
+if (alertEl) {
+  if (totals.expense > totals.income && totals.expense > 0) {
+    alertEl.className = "budget-alert danger";
+    alertEl.style.display = "block";
+    alertEl.textContent =
+      "🚨 Budget Exceeded! Your expenses are higher than your income. Please review your spending.";
+  } else if (
+    totals.income > 0 &&
+    totals.expense >= totals.income * 0.8
+  ) {
+    alertEl.className = "budget-alert warning";
+    alertEl.style.display = "block";
+    alertEl.textContent =
+      "⚠️ Budget Alert! You have used 80% or more of your income. Control your spending.";
+  } else {
+    alertEl.style.display = "none";
+    alertEl.textContent = "";
+  }
+}
+
+
+  
+
   const items = [
     {
       icon: "📌",
